@@ -76,16 +76,24 @@ const addExpense = async (req, res) => {
 
 const getExpense = async (req, res) => {
     const userId = req.userId;
+    const { page = 1, limit = 15 } = req.query; // Default to page 1, limit 15 if not provided
+
+    const offset = (page - 1) * limit; // Calculate offset for pagination
 
     try {
-      const expenses = await Expense.findAll({
-        where : {
-            userId : userId
-        }
-      });
+        const totalExpenses = await Expense.sum('amount', { where: { userId: userId } });
+        const { count, rows: expenses } = await Expense.findAndCountAll({
+            where: { userId: userId },
+            limit: parseInt(limit),
+            offset: parseInt(offset)
+        });
+
         res.status(200).json({
             expenses,
-            success : true
+            currentPage: page,
+            totalPages: Math.ceil(count / limit),
+            totalExpenses,
+            success: true
         });
     } catch (error) {
         res.status(500).json({ 
@@ -93,7 +101,7 @@ const getExpense = async (req, res) => {
         });
     }
 };
-  
+
 
 const deleteExpense = async (req, res) => {
     const userId = req.userId;
