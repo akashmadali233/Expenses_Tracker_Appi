@@ -32,12 +32,14 @@ const db = {};
 db.Sequelize = Sequelize;
 db.sequelize = sequelize;
 
+
 // Define your models here
 db.users = require('../models/userModel')(sequelize, DataTypes);
 db.expenses = require('../models/expenseModel')(sequelize, DataTypes);
 db.orders = require('../models/orderModel')(sequelize, DataTypes);
 db.forgotpassword = require('../models/forgotPasswordModel')(sequelize, DataTypes);
 db.s3bucketlinks = require('../models/s3BucketLinksModel')(sequelize, DataTypes);
+
 
 // Define relationships between models
 db.users.hasMany(db.expenses);
@@ -51,6 +53,7 @@ db.forgotpassword.belongsTo(db.users);
 
 db.users.hasMany(db.s3bucketlinks);
 db.s3bucketlinks.belongsTo(db.users);
+
 
 // Sync models with database
 db.sequelize.sync({ force: false })

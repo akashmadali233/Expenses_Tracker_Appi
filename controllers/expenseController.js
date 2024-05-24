@@ -7,13 +7,13 @@ const ExcelJS = require('exceljs');
 const fs = require('fs');
 const path = require('path');
 
-
+//db tables
 const User = db.users
 const Expense = db.expenses
 const Order = db.orders
 const S3Bucket = db.s3bucketlinks
 
-
+//adding the expense
 const addExpense = async (req, res) => {
     const userId = req.userId;
     const { amount, description, category } = req.body;
@@ -67,13 +67,14 @@ const addExpense = async (req, res) => {
         });
     } catch (err) {
         if (transaction) await transaction.rollback();
-        console.error(err);
         res.status(500).json({
             message: "Something went wrong"
         });
     }
 };
 
+
+//getting all expenses 
 const getExpense = async (req, res) => {
     const userId = req.userId;
     const { page = 1, limit = 15 } = req.query; // Default to page 1, limit 15 if not provided
@@ -101,6 +102,7 @@ const getExpense = async (req, res) => {
         });
     }
 };
+
 
 
 const deleteExpense = async (req, res) => {
@@ -139,7 +141,6 @@ const deleteExpense = async (req, res) => {
 
     } catch (error) {
         if (transaction) await transaction.rollback();
-        console.log(error);
         return res.status(500).json({
             message: 'Internal server error'
         });
@@ -147,13 +148,16 @@ const deleteExpense = async (req, res) => {
 };
 
 
-const purcahsePremium = async (req, res) => {
+//purchaging the premium
+const purchasePremium = async (req, res) => {
     const userId = req.userId;
     
     try {
         const rzp = new Razorpay({
-            key_id: process.env.RAZORPAY_KEY_ID,
-            key_secret: process.env.RAZORPAY_KEY_SECRET
+            // key_id: process.env.RAZORPAY_KEY_ID,
+            // key_secret: process.env.RAZORPAY_KEY_SECRET
+            key_id: "rzp_test_wQoMQH5uMEncQX",
+            key_secret: "BJEKeHLqai6aNOzB70xC9zPB"
         });
 
         const amount = 5000;
@@ -165,12 +169,11 @@ const purcahsePremium = async (req, res) => {
         return res.status(201).json({ order, key_id: rzp.key_id });
 
     } catch (error) {
-        console.error("Error creating premium order:", error);
         return res.status(500).json({ message: "Something went wrong", error });
     }
 };
 
-
+//after purchesing the transaction update
 const updateTranscationdetails = async (req, res) => {
     try {
         const { payment_id, order_id } = req.body;
@@ -189,6 +192,7 @@ const updateTranscationdetails = async (req, res) => {
     }
 }
 
+//knowing user is premium or not
 const userpremium = (req, res) => {
     try {
         const userId = req.userId;
@@ -227,7 +231,7 @@ const userpremium = (req, res) => {
     }
 }
 
-
+//getting all user expenses
 const getAllUserExpenses = async (req, res) => {
     try {
         const expenses = await User.findAll({
@@ -241,13 +245,12 @@ const getAllUserExpenses = async (req, res) => {
 
         res.json({ expenses });
     } catch (err) {
-        console.error('Error fetching expenses:', err);
         res.status(500).json({ error: 'Internal server error' });
     }
 };
 
 
-
+//file uploading to s3 bucket 
 async function uploadToS3(data, fileName) {
     const BUCKET_NAME = 'expenseapp233';
     const IAM_USER_ACCESS_KEY = process.env.ACCESS_KEY;
@@ -276,6 +279,8 @@ async function uploadToS3(data, fileName) {
     });
 }
 
+
+//creating the excel file
 const generateExcel = async (expenses) => {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Expenses');
@@ -301,18 +306,17 @@ const generateExcel = async (expenses) => {
     return filePath;
 }
 
+//downloading the excel file
 const downloadExpenses = async (req, res) => {
     try {
         const expenses = await Expense.findAll({ where: { userId: req.user.userId } });
-        console.log(expenses);
 
         const excelPath = await generateExcel(expenses);
         const fileContent = fs.readFileSync(excelPath);
         const userID = req.user.userId;
         const fileName = `Expense_${userID}/${new Date()}.xlsx`;
         const fileURL = await uploadToS3(fileContent, fileName);
-        console.log("url = ",userID);
-        console.log("url = ",fileURL);
+
         // Clean up the generated Excel file
         fs.unlinkSync(excelPath);
 
@@ -324,7 +328,6 @@ const downloadExpenses = async (req, res) => {
             },
         });
     } catch (error) {
-        console.log(error);
         return res.status(500).json({
             error: {
                 message: error.message,
@@ -333,8 +336,7 @@ const downloadExpenses = async (req, res) => {
     }
 };
 
-
-
+//getting all files from s3 buckets
 const getAllS3BucketLinks = async (req, res) => {
     try {
         const userID = req.user.userId;
@@ -345,7 +347,6 @@ const getAllS3BucketLinks = async (req, res) => {
             }
         });
     } catch (error) {
-        console.log(error);
         return res.status(500).json({
             success: false,
             error: {
@@ -355,11 +356,13 @@ const getAllS3BucketLinks = async (req, res) => {
     }
 };
 
+
+
 module.exports = {
     addExpense,
     getExpense,
     deleteExpense,
-    purcahsePremium,
+    purchasePremium,
     updateTranscationdetails,
     userpremium,
     getAllUserExpenses,

@@ -1,3 +1,4 @@
+
 module.exports = (sequelize, DataTypes) => {
     const ForgotPassword = sequelize.define("forgotpassword", {
         id: {

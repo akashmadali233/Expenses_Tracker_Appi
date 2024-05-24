@@ -9,6 +9,7 @@ const { v4: uuidv4 } = require('uuid');
 const User = db.users
 const ForgotPassword = db.forgotpassword
 
+
 //signup
 const addUser = async (req, res) => {
     const {name, email, password} = req.body;
@@ -56,7 +57,6 @@ const addUser = async (req, res) => {
         });
 
     }catch(error){
-        console.log(error);
         res.status(500).json({
             error : {
                 status : 500,
@@ -66,17 +66,16 @@ const addUser = async (req, res) => {
     }    
 }
 
-//token genaration
 
+//token genaration
 function generateToken(email, id){
     return jwt.sign({email:email, userId:id}, SECRET_KEY);
 }
 
+
 //signIn
 const existingUser = async (req, res) => {
     const {email, password} = req.body;
-    console.log(email)
-    console.log(password)
     const fields = { email, password };
     const emptyFields = Object.keys(fields).filter(key => !fields[key]);
 
@@ -88,8 +87,7 @@ const existingUser = async (req, res) => {
             }
         });
     }
-    try{
-        
+    try{   
         const existingUser = await User.findOne({ where: { email: email } });
         if(!existingUser){
             return res.status(400).json({
@@ -121,14 +119,13 @@ const existingUser = async (req, res) => {
         });
 
     }catch(error){
-        console.log(error);
         res.status(500).json({
             message : "Something went wrong"
         });
     }
 }
 
-
+//reset request mail content method
 const sendResetPasswordEmail = async (toEmail, resetLink) => {
     const defaultClient = SibApiV3Sdk.ApiClient.instance;
     const apiKey = defaultClient.authentications['api-key'];
@@ -151,14 +148,13 @@ const sendResetPasswordEmail = async (toEmail, resetLink) => {
 
     try {
         const data = await apiInstance.sendTransacEmail(sendSmtpEmail);
-        console.log('Password reset email sent successfully:', JSON.stringify(data));
     } catch (error) {
-        console.error('Error sending password reset email:', error.response ? error.response.body : error);
         throw error;
     }
 };
 
 
+//reset request password
 const requestResetPassword = async (req, res) => {
     const { email } = req.body;
     if (!email) {
@@ -199,7 +195,6 @@ const requestResetPassword = async (req, res) => {
             }
         });
     } catch (error) {
-        console.error("Error requesting password reset:", error);
         return res.status(500).json({
             error: {
                 status: 500,
@@ -210,6 +205,7 @@ const requestResetPassword = async (req, res) => {
 };
 
 
+//password change
 const changePassword = async (req, res) => {
     const { id, password, confirmpassword } = req.body;
 
@@ -265,7 +261,6 @@ const changePassword = async (req, res) => {
             }
         });
     } catch (error) {
-        console.error("Error changing password:", error);
         return res.status(500).json({
             error: {
                 status: 500,
@@ -274,6 +269,7 @@ const changePassword = async (req, res) => {
         });
     }
 };
+
 
 
 module.exports = {

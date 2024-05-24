@@ -1,3 +1,4 @@
+
 module.exports = (sequelize, DataTypes) => {
     const Order = sequelize.define("order", {
         paymentid : DataTypes.STRING,
