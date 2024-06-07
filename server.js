@@ -31,6 +31,9 @@ app.use(morgan('combined', { stream: accessLogStream }));
 const router = require('./routes/homeRoutes');
 app.use('/api', router);
 
+app.use((req,res) => {
+    res.sendFile(path.join(__dirname, `public/${req.url}`));
+})
 
 //port
 const PORT = process.env.PORT || 8080;
