@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link rel="stylesheet" href="index.css">
+</head>
+<body>
+    <!-- showing toaster -->
+    <div id="toast-container"></div>
+
+    <div class="container"> 
+        <h1>Expense Tracker</h1> 
+
+        <!-- Adding The New Expenses  Form-->
+        <form id="expense-form" onsubmit="addNewExpense(event)"> 
+            <input type="number" id="amount" placeholder="Expense Amount" required /> 
+
+            <input type="text" id="description" placeholder="Expense description" required /> 
+
+            <select id="category"required>
+                <option value="" disabled selected hidden>Expense category</option>
+                <option value="fuel">Fuel</option>
+                <option value="food">Food</option>
+                <option value="home">Home related charges</option>
+                <option value="party">Movies/Party/Travelling</option>
+            </select>
+            <button type="submit"> 
+                Add Expense 
+            </button> 
+        </form> 
+
+        <!-- Showing premium member, File Download button, and Pagination -->
+        <div id="premium-container" style="display: none;">
+            You are a premium member
+            <button id="show-details-btn" class="button-like">Show Leaderboard</button>
+            <button id="downloadButton" class="button-like" onclick="download(event)" style="margin-right: 170px;">Download File</button>
+        </div>
+
+        <label for="expenses-per-page" style="margin-left: 600px;">Expenses per Page:</label>
+        <select id="expenses-per-page" onchange="updateExpensesPerPage()">
+            <option value="05">05</option>
+            <option value="10">10</option>
+            <option value="15">15</option>
+            <option value="20">20</option>
+        </select>
+
+          <!-- showing premium button -->             
+        <button id="rzp1-button" class="button-like" style="display: none;">Buy Premium</button>
+        <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+
+        
+        <!-- Fetching All the Expenses -->
+        <div class="expense-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Amount</th>
+                        <th>Description</th>
+                        <th>Category</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="expense-list"></tbody>
+            </table>
+            <div class="total-amount">
+                <strong>Total:</strong>
+                $<span id="total-amount">0</span>   <!-- Toatal Amount of the expenses -->
+            </div>
+        </div>
+
+        <!-- Pagination setup -->
+        <div id="pagination-controls">  
+            <button id="prev-page" disabled>Previous</button>
+            <div id="page-numbers"></div>
+            <button id="next-page">Next</button>
+        </div>
+
+        <!-- Premium user adavantage to know the all user details -->
+        <div id="user-details" style="display: none;"></div>
+        <div id="s3buckets-link"></div>
+
+    </div> 
+</body>
+<script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+<script src="./expense.js"></script>
+</html>

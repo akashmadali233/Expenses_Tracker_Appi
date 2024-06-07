@@ -15,15 +15,15 @@ app.use(cors({
 }));
 
 const accessLogStream = fs.createWriteStream(path.join(__dirname, 'access.log'), { flags: 'a' });
-const privateKey = fs.readFileSync('server.key');
-const certificate = fs.readFileSync('server.cert');
+// const privateKey = fs.readFileSync('server.key');
+// const certificate = fs.readFileSync('server.cert');
 
 
 //middlewares
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(upload.array());
-app.use(helmet());
+//app.use(helmet());
 app.use(compression());
 app.use(morgan('combined', { stream: accessLogStream }));
 
