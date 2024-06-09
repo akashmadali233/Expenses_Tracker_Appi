@@ -46,7 +46,7 @@ function signUp(event) {
     };
 
     // Sending the data to the backend API using fetch
-    fetch('http://52.57.54.126:8080/api/signup', {
+    fetch('http://localhost:8080/api/signup', {
     method: 'POST',
     headers: {
         'Content-Type': 'application/json'
@@ -90,7 +90,7 @@ function signIn(event){
         password
     }
 
-    fetch('http://52.57.54.126:8080/api/signin', {
+    fetch('http://localhost:8080/api/signin', {
     method: 'POST',
     headers: {
         'Content-Type': 'application/json'
@@ -121,7 +121,7 @@ async function handleResetRequest() {
     const email = document.getElementById('email').value;
     
     try {
-        const response = await fetch('http://52.57.54.126:8080/api/request-reset-password', {
+        const response = await fetch('http://localhost:8080/api/request-reset-password', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
