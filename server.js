@@ -36,7 +36,7 @@ app.use((req,res) => {
 })
 
 //port 
-const PORT = process.env.PORT || 8080;
+const PORT = process.env.PORT || 3000;
 
 // const httpsServer = https.createServer({ key: privateKey, cert: certificate }, app);
 
