@@ -35,7 +35,7 @@ app.use((req,res) => {
     res.sendFile(path.join(__dirname, `public/${req.url}`));
 })
 
-//port number
+//port
 const PORT = process.env.PORT || 3000;
 
 // const httpsServer = https.createServer({ key: privateKey, cert: certificate }, app);
