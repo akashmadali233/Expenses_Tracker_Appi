@@ -36,7 +36,7 @@ app.use((req,res) => {
 })
 
 //port
-const PORT = process.env.PORT || 8080;
+const PORT = process.env.PORT || 3000;
 
 // const httpsServer = https.createServer({ key: privateKey, cert: certificate }, app);
 
@@ -44,7 +44,8 @@ const PORT = process.env.PORT || 8080;
 // httpsServer.listen(PORT, () => {
 //     console.log(`HTTPS Server is running on port ${PORT}`);
 // });
-//server
+
+//server running on port number
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });
