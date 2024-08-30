@@ -1,15 +1,9 @@
 const mongoose = require('mongoose');
+const { Schema } = mongoose;
 
-const S3BucketLinksSchema = new mongoose.Schema({
-    fileURL: {
-        type: String,
-        required: true
-    },
-    user: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
-        required: true
-    }
+const S3BucketSchema = new Schema({
+    fileURL: String,
+    user: { type: Schema.Types.ObjectId, ref: 'User' }
 }, { timestamps: true });
 
-module.exports = mongoose.model('S3BucketLink', S3BucketLinksSchema);
+module.exports = mongoose.model('S3Bucket', S3BucketSchema);

@@ -1,23 +1,20 @@
-const db = require('../models');
 const Razorpay = require('razorpay'); 
 require('dotenv').config();
-const { sequelize } = db;
-const AWS = require('aws-sdk');
+//const AWS = require('aws-sdk');
 const ExcelJS = require('exceljs');
 const fs = require('fs');
 const path = require('path');
 
-//db tables
-const User = db.users
-const Expense = db.expenses
-const Order = db.orders
-const S3Bucket = db.s3bucketlinks
-
 //adding the expense
+const User = require('../models/userModel');
+const Expense = require('../models/expenseModel');
+const Order = require('../models/orderModel')
+const mongoose = require('mongoose');
+
 const addExpense = async (req, res) => {
     const userId = req.userId;
     const { amount, description, category } = req.body;
- 
+
     const fields = { amount, description, category };
     const emptyFields = Object.keys(fields).filter(key => !fields[key]);
 
@@ -30,43 +27,30 @@ const addExpense = async (req, res) => {
         });
     }
 
-    let transaction;
     try {
-        transaction = await sequelize.transaction();
-
         const numericAmount = parseFloat(amount);
 
-        const expense = await Expense.create(
-            { amount: numericAmount, description, category, userId },
-            { transaction }
-        );
+        const expense = await Expense.create({ amount: numericAmount, description, category, user: userId });
 
-        const user = await User.findOne({ where: { id: userId }});
+        const user = await User.findById(userId);
 
         if (!user) {
-            return res.status(404).json({
-                message: "User not found"
-            });
+            return res.status(404).json({ message: "User not found" });
         }
 
-        const totalAmount = user.total_expense_amount + numericAmount;
+        user.total_expense_amount += numericAmount;
+        await user.save();
 
-        await User.update(
-            { total_expense_amount: totalAmount },
-            { where: { id: userId }, transaction }
-        );
-
-        await transaction.commit();
+        const populatedExpense = await Expense.findById(expense._id).populate('user', 'name email'); // Specify fields to populate
 
         return res.status(201).json({
             success: {
-                expense,
+                expense: populatedExpense,
                 status: 201,
                 message: "Saved expenses successfully!"
             }
         });
     } catch (err) {
-        if (transaction) await transaction.rollback();
         res.status(500).json({
             message: "Something went wrong"
         });
@@ -79,21 +63,29 @@ const getExpense = async (req, res) => {
     const userId = req.userId;
     const { page = 1, limit = 15 } = req.query; // Default to page 1, limit 15 if not provided
 
-    const offset = (page - 1) * limit; // Calculate offset for pagination
+    const skip = (page - 1) * limit; // Calculate skip for pagination
 
     try {
-        const totalExpenses = await Expense.sum('amount', { where: { userId: userId } });
-        const { count, rows: expenses } = await Expense.findAndCountAll({
-            where: { userId: userId },
-            limit: parseInt(limit),
-            offset: parseInt(offset)
-        });
+        // Calculate total expenses
+        const totalExpenses = await Expense.aggregate([
+            { $match: { user: new mongoose.Types.ObjectId(userId) } },  // Correct usage of ObjectId
+            { $group: { _id: null, total: { $sum: "$amount" } } }
+        ]);
+
+        // Get expenses with pagination and populate user details
+        const expenses = await Expense.find({ user: userId })
+            .populate('user', 'name email') // Populate user details
+            .skip(skip)
+            .limit(parseInt(limit));
+
+        // Count total number of expenses for pagination
+        const count = await Expense.countDocuments({ user: userId });
 
         res.status(200).json({
             expenses,
             currentPage: page,
             totalPages: Math.ceil(count / limit),
-            totalExpenses,
+            totalExpenses: totalExpenses.length ? totalExpenses[0].total : 0,
             success: true
         });
     } catch (error) {
@@ -104,46 +96,70 @@ const getExpense = async (req, res) => {
 };
 
 
-
 const deleteExpense = async (req, res) => {
     const userId = req.userId;
-    const id = req.body.id;
-    if (!id) {
+    const expenseId = req.body.id;
+
+    if (!expenseId) {
         return res.status(400).json({
             error: {
                 message: "Id field is required!"
             }
         });
     }
-    let transaction;
-    try {
-        transaction = await sequelize.transaction();
 
-        const expense = await Expense.findOne({ where: { userId: userId, id: id }});
-       
-        const user = await User.findOne({ where: { id: userId }});
-        
-        const newTotalExpenseAmount = user.total_expense_amount - expense.amount;
-        
-        await User.update(
-            { total_expense_amount: newTotalExpenseAmount },
-            { where: { id: userId }, transaction }
-        );
+    try { 
+        // Find the expense to delete
+        const expense = await Expense.findOne({ _id: expenseId, user: userId });
 
-        await Expense.destroy({ where: { userId: userId, id: id }, transaction });
+        if (!expense) {
+            return res.status(404).json({
+                message: "Expense not found"
+            });
+        }
 
-        await transaction.commit();
+        // Find the user and update their total expense amount
+        const user = await User.findById(userId);
+
+        if (!user) {
+            return res.status(404).json({
+                message: "User not found"
+            });
+        }
+
+        user.total_expense_amount -= expense.amount;
+        await user.save();
+
+        // Delete the expense
+        await Expense.deleteOne({ _id: expenseId, user: userId });
 
         res.status(200).json({
-            id: id,
+            id: expenseId,
             message: "Successfully deleted the expense details"
         });
 
     } catch (error) {
-        if (transaction) await transaction.rollback();
         return res.status(500).json({
-            message: 'Internal server error'
+            message: 'Internal server error',
+            error: error.message
         });
+    }
+};
+
+
+//getting all user expenses
+const getAllUserExpenses = async (req, res) => {
+    try {
+        const users = await User.find({}, 'name total_expense_amount') // Specify the fields to return
+            .sort({ total_expense_amount: -1 }); // Sort in descending order
+
+        if (users.length === 0) {
+            return res.status(404).json({ error: 'No expenses found' });
+        }
+
+        res.json({ users });
+    } catch (err) {
+        res.status(500).json({ error: 'Internal server error' });
     }
 };
 
@@ -151,18 +167,24 @@ const deleteExpense = async (req, res) => {
 //purchaging the premium
 const purchasePremium = async (req, res) => {
     const userId = req.userId;
-    
+
     try {
         const rzp = new Razorpay({
             key_id: process.env.RAZORPAY_KEY_ID,
             key_secret: process.env.RAZORPAY_KEY_SECRET
         });
 
-        const amount = 5000;
+        const amount = 5000; // Amount in paise (i.e., 5000 paise = 50 INR)
         const order = await rzp.orders.create({ amount, currency: "INR" });
-        
+
         // Create the order associated with the user
-        await Order.create({userId :  userId, orderid: order.id,status: "PENDING"});
+        const newOrder = new Order({
+            user: userId,
+            orderid: order.id,
+            status: "PENDING"
+        });
+
+        await newOrder.save();
 
         return res.status(201).json({ order, key_id: rzp.key_id });
 
@@ -171,83 +193,77 @@ const purchasePremium = async (req, res) => {
     }
 };
 
+
 //after purchesing the transaction update
-const updateTranscationdetails = async (req, res) => {
+const updateTransactionDetails = async (req, res) => {
     try {
         const { payment_id, order_id } = req.body;
-        const order = await Order.findOne({ where: { orderid: order_id } });
-        const promise1 = await order.update({ paymentid: payment_id, status: 'SUCCESSFUL' });
-        const promise2 = User.update({ ispremiumuser: 1 }, { where: { id: req.userId } });
-        
-        await Promise.all([promise1, promise2]);
-        res.status(200).json({
-            message: "Transaction successful"
-        });
-    } catch (error) {
-        return res.status(500).json({
-            error: "An error occurred while updating transaction details"
-        });
-    }
-}
 
-//knowing user is premium or not
-const userpremium = (req, res) => {
-    try {
-        const userId = req.userId;
-        User.findOne({ where: { id: userId } })
-            .then(User => {
-                if (!User) {
-                    return res.status(404).json({
-                        status: false,
-                        message: "User not found"
-                    });
-                }
+        // Find the order by its orderid
+        const order = await Order.findOne({ orderid: order_id });
 
-                if (User.ispremiumuser == 1) {
-                    return res.status(200).json({
-                        status: true,
-                        message: "User is a premium member"
-                    });
-                } else {
-                    return res.status(200).json({
-                        status: false,
-                        message: "User is not a premium member"
-                    });
-                }
-            })
-            .catch(error => {
-                return res.status(500).json({
-                    status: false,
-                    message: "Internal Server Error"
-                });
-            });
-    } catch (error) {
-        return res.status(500).json({
-            status: false,
-            message: "Internal Server Error"
-        });
-    }
-}
-
-//getting all user expenses
-const getAllUserExpenses = async (req, res) => {
-    try {
-        const expenses = await User.findAll({
-            attributes: ['name', 'total_expense_amount'],
-            order: [['total_expense_amount', 'DESC']] 
-        });
-
-        if (!expenses || expenses.length === 0) {
-            return res.status(404).json({ error: 'No expenses found' });
+        if (!order) {
+            return res.status(404).json({ message: "Order not found" });
         }
 
-        res.json({ expenses });
-    } catch (err) {
-        res.status(500).json({ error: 'Internal server error' });
+        // Update the order with payment details
+        order.paymentid = payment_id;
+        order.status = 'SUCCESSFUL';
+
+        // Mark user as a premium user
+        const updateOrderPromise = order.save();
+        const updateUserPromise = User.findByIdAndUpdate(req.userId, { ispremiumuser: true });
+
+        await Promise.all([updateOrderPromise, updateUserPromise]);
+
+        res.status(200).json({ message: "Transaction successful" });
+
+    } catch (error) {
+        return res.status(500).json({
+            error: "An error occurred while updating transaction details",
+            details: error.message
+        });
     }
 };
 
 
+
+//knowing user is premium or not
+const userpremium = async (req, res) => {
+    try {
+        const userId = req.userId;
+
+        const user = await User.findById(userId);
+
+        if (!user) {
+            return res.status(404).json({
+                status: false,
+                message: "User not found"
+            });
+        }
+
+        if (user.ispremiumuser) {
+            return res.status(200).json({
+                status: true,
+                message: "User is a premium member"
+            });
+        } else {
+            return res.status(200).json({
+                status: false,
+                message: "User is not a premium member"
+            });
+        }
+    } catch (error) {
+        return res.status(500).json({
+            status: false,
+            message: "Internal Server Error",
+            error: error.message
+        });
+    }
+};
+
+
+/*
 //file uploading to s3 bucket 
 async function uploadToS3(data, fileName) {
     const BUCKET_NAME = 'expenseapp233';
@@ -278,62 +294,6 @@ async function uploadToS3(data, fileName) {
 }
 
 
-//creating the excel file
-const generateExcel = async (expenses) => {
-    const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet('Expenses');
-
-    worksheet.columns = [
-        { header: 'ID', key: 'id', width: 10 },
-        { header: 'Amount', key: 'amount', width: 15 },
-        { header: 'Description', key: 'description', width: 30 },
-        { header: 'Date', key: 'date', width: 20 },
-    ];
-
-    expenses.forEach(expense => {
-        worksheet.addRow({
-            id: expense.id,
-            amount: expense.amount,
-            description: expense.description,
-            date: expense.createdAt
-        });
-    });
-
-    const filePath = path.join(__dirname, 'expenses.xlsx');
-    await workbook.xlsx.writeFile(filePath);
-    return filePath;
-}
-
-//downloading the excel file
-const downloadExpenses = async (req, res) => {
-    try {
-        const expenses = await Expense.findAll({ where: { userId: req.user.userId } });
-
-        const excelPath = await generateExcel(expenses);
-        const fileContent = fs.readFileSync(excelPath);
-        const userID = req.user.userId;
-        const fileName = `Expense_${userID}/${new Date()}.xlsx`;
-        const fileURL = await uploadToS3(fileContent, fileName);
-
-        // Clean up the generated Excel file
-        fs.unlinkSync(excelPath);
-
-        await S3Bucket.create({ fileURL, userId : userID});
-
-        return res.status(200).json({
-            success: {
-                url: fileURL,
-            },
-        });
-    } catch (error) {
-        return res.status(500).json({
-            error: {
-                message: error.message,
-            },
-        });
-    }
-};
-
 //getting all files from s3 buckets
 const getAllS3BucketLinks = async (req, res) => {
     try {
@@ -353,7 +313,63 @@ const getAllS3BucketLinks = async (req, res) => {
         });
     }
 };
+*/
 
+//creating the excel file
+const generateExcel = async (expenses) => {
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Expenses');
+
+    worksheet.columns = [
+        { header: 'ID', key: 'id', width: 20 },
+        { header: 'Amount', key: 'amount', width: 15 },
+        { header: 'Description', key: 'description', width: 30 },
+        { header: 'Date', key: 'date', width: 20 },
+    ];
+
+    expenses.forEach(expense => {
+        worksheet.addRow({
+            id: expense._id.toString(), // Convert MongoDB ObjectId to string
+            amount: expense.amount,
+            description: expense.description,
+            date: expense.createdAt.toISOString() // Ensure the date is in a readable format
+        });
+    });
+
+    const filePath = path.join(__dirname, 'expenses.xlsx');
+    await workbook.xlsx.writeFile(filePath);
+    return filePath;
+};
+
+
+//downloading the excel file
+const downloadExpenses = async (req, res) => {
+    try {
+        // Fetch expenses using Mongoose
+        const expenses = await Expense.find({ user: req.userId });
+
+        // Generate the Excel file
+        const excelPath = await generateExcel(expenses);
+        const fileContent = fs.readFileSync(excelPath);
+
+        // Set headers to indicate file download
+        res.setHeader('Content-Disposition', `attachment; filename=expenses_${req.user.userId}_${new Date().toISOString().replace(/:/g, '-')}.xlsx`);
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+
+        // Send the file content as the response
+        res.send(fileContent);
+
+        // Clean up the generated Excel file
+        fs.unlinkSync(excelPath);
+    } catch (error) {
+        console.error('Error downloading expenses:', error); // Log the error for debugging
+        return res.status(500).json({
+            error: {
+                message: error.message,
+            },
+        });
+    }
+};
 
 
 module.exports = {
@@ -361,9 +377,8 @@ module.exports = {
     getExpense,
     deleteExpense,
     purchasePremium,
-    updateTranscationdetails,
-    userpremium,
+    updateTransactionDetails, 
+    userpremium, 
     getAllUserExpenses,
-    downloadExpenses,
-    getAllS3BucketLinks
+    downloadExpenses
 }

@@ -1,14 +1,11 @@
 const mongoose = require('mongoose');
+const { Schema } = mongoose;
 
-const OrderSchema = new mongoose.Schema({
-    paymentid: String,
+const OrderSchema = new Schema({
+    user: { type: Schema.Types.ObjectId, ref: 'User' },
     orderid: String,
-    status: String,
-    user: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
-        required: true
-    }
+    paymentid: String,
+    status: String
 }, { timestamps: true });
 
 module.exports = mongoose.model('Order', OrderSchema);
