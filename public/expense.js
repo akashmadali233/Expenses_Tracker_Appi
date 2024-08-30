@@ -99,7 +99,7 @@ function addNewExpenseToUI(expenses) {
             <td>${expense.amount}</td>
             <td>${expense.description}</td>
             <td>${expense.category}</td>
-            <td class="delete-btn" data-id="${expense.id}" onclick="deleteExpensedetails(this)">Delete</td>`;
+            <td class="delete-btn" data-id="${expense._id}" onclick="deleteExpensedetails(this)">Delete</td>`;
         expenseList.appendChild(expenseRow);
     });
 }
@@ -135,7 +135,7 @@ function updatePaginationControls(currentPage, totalPages) {
 //deleting the expenses
 function deleteExpensedetails(element){
     let id = element.getAttribute('data-id');
-
+    alert(id);
     fetch('http://localhost:8080/api/expense/deleteexpense',{
         method : 'POST',
         headers : {
@@ -262,11 +262,10 @@ document.addEventListener("DOMContentLoaded", function() {
             return response.json();
         })
         .then(data => {
-            showUserDetails(data.expenses);
+            showUserDetails(data.users);
         })
         .catch(error => {
-            //console.log('Error fetching user details:', error);
-            showErrorToast('Somthing went wrong');
+            console.log('Error fetching user details:', error);
         });
     }
 
@@ -297,7 +296,7 @@ document.addEventListener("DOMContentLoaded", function() {
 });
 
 
-
+/*
 window.addEventListener('DOMContentLoaded', () => {
     fetch('http://localhost:8080/api/getalls3buckets', {
         method: 'GET',
@@ -339,40 +338,49 @@ function addingNewLinksToUI(links) {
         </table>
     `;
 }
-
-
+*/
 
 async function download(event) {
     event.preventDefault();
     const downloadButton = document.getElementById('downloadButton');
     downloadButton.disabled = true;
+
     try {
         const response = await fetch('http://localhost:8080/api/download', {
             method: 'GET',
             headers: {
-                'Content-Type': 'application/json',
                 'Authorization': 'Bearer ' + token,
             },
         });
 
-        const data = await response.json();
-
-        if (response.status === 200) {
-            const a = document.createElement('a');
-            a.href = data.success.url; 
-            a.download = 'myExpense.xlsx';
-            a.click();
-            alert('File downloaded successfully!');
-        } else {
-            //console.log('Error:', data.error.message);
-            showErrorToast('Somthing went wrong');
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
         }
+
+        // Convert response to a blob
+        const blob = await response.blob();
+
+        // Create a URL for the blob and initiate a download
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'myExpense.xlsx'; 
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a); 
+
+        // Release the object URL
+        window.URL.revokeObjectURL(url);
+
+        alert('File downloaded successfully!');
     } catch (error) {
-        //console.log('Error:', error);
-        showErrorToast('Somthing went wrong');
-    }finally{
-        downloadButton.disabled = false; 
+        console.error('Error:', error);
+        alert('Failed to download file');
+    } finally {
+        downloadButton.disabled = false;
     }
 }
+
+
 
 

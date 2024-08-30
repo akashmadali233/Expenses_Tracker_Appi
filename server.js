@@ -34,7 +34,7 @@ app.use('/api', router);
 // });
 
 // Port Setup
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8080;
 
 // Start HTTP Server
 app.listen(PORT, () => {
