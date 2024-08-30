@@ -1,9 +1,14 @@
+const mongoose = require('mongoose');
 
-module.exports = (sequelize, DataTypes) => {
-    const Order = sequelize.define("order", {
-        paymentid : DataTypes.STRING,
-        orderid : DataTypes.STRING,
-        status : DataTypes.STRING
-    });  
-    return Order;
-}
+const OrderSchema = new mongoose.Schema({
+    paymentid: String,
+    orderid: String,
+    status: String,
+    user: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true
+    }
+});
+
+module.exports = mongoose.model('Order', OrderSchema);

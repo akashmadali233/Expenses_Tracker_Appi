@@ -11,21 +11,22 @@ router.post('/signin', homeController.existingUser);
 router.post('/request-reset-password', homeController.requestResetPassword);
 router.post('/reset-password', homeController.changePassword);
 
-//expenses routes
-router.post('/expense/addexpense', auth, expenseController.addExpense);
-router.get('/expense/getexpense', auth, expenseController.getExpense);
-router.post('/expense/deleteexpense', auth, expenseController.deleteExpense)
-router.get('/getalluserexpenses', auth, expenseController.getAllUserExpenses);
 
-//premium member
-router.post('/purchase/premiummembership', auth, expenseController.purchasePremium)
-router.post('/purchase/updatetransactionsstatus', auth, expenseController.updateTranscationdetails)
-router.get('/purchase/userpremiumornot',auth, expenseController.userpremium);
+// //expenses routes
+// router.post('/expense/addexpense', auth, expenseController.addExpense);
+// router.get('/expense/getexpense', auth, expenseController.getExpense);
+// router.post('/expense/deleteexpense', auth, expenseController.deleteExpense)
+// router.get('/getalluserexpenses', auth, expenseController.getAllUserExpenses);
 
-//download xlsx file
-router.get('/download',auth, expenseController.downloadExpenses);
+// //premium member
+// router.post('/purchase/premiummembership', auth, expenseController.purchasePremium)
+// router.post('/purchase/updatetransactionsstatus', auth, expenseController.updateTranscationdetails)
+// router.get('/purchase/userpremiumornot',auth, expenseController.userpremium);
 
-//s3 storing file
-router.get('/getalls3buckets', auth, expenseController.getAllS3BucketLinks);
+// //download xlsx file
+// router.get('/download',auth, expenseController.downloadExpenses);
+
+// //s3 storing file
+// router.get('/getalls3buckets', auth, expenseController.getAllS3BucketLinks);
 
 module.exports = router;

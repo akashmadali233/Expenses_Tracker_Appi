@@ -1,11 +1,15 @@
+const mongoose = require('mongoose');
 
-module.exports = (sequelize, DataTypes) => {
-    const S3Bucket = sequelize.define("s3bucketlinks", {
-        fileURL: {
-            type: DataTypes.STRING,
-            allowNull: false
-        }
-    });
+const S3BucketLinksSchema = new mongoose.Schema({
+    fileURL: {
+        type: String,
+        required: true
+    },
+    user: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true
+    }
+});
 
-    return S3Bucket;
-};
+module.exports = mongoose.model('S3BucketLink', S3BucketLinksSchema);
